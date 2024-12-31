@@ -1,14 +1,12 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useContext } from "react";
 import "./App.css";
 import {
-  CoupGameContext,
   startGame,
-  sendEvent,
   createSession,
-  UUID,
   resetDatabase,
 } from "./statemachine/index.ts";
 import { defaultContext, GlobalContext } from "./context";
+import PlayerCard from "./components/PlayerCard.tsx";
 
 export type SetStateFunction<T> = React.Dispatch<React.SetStateAction<T>>;
 
@@ -154,12 +152,12 @@ function App() {
           >
             {globalContext.players.map((player, i) => {
               return (
-                <Card
+                <PlayerCard
                   key={player.name}
                   disabled={globalContext.currentPlayer !== i}
                   playerId={i}
                   {...player}
-                ></Card>
+                ></PlayerCard>
               );
             })}
           </div>
@@ -170,135 +168,3 @@ function App() {
 }
 
 export default App;
-
-function Card(props: {
-  name: string;
-  coins: number;
-  disabled: boolean;
-  playerId: number;
-}): JSX.Element {
-  const { globalContext, setGlobalContext } = useContext(GlobalContext);
-  const { name, coins, playerId } = props;
-
-  const disabled = globalContext.currentPlayer !== playerId;
-
-  function createSendEventClickHandler(event: {
-    type: "Coup" | "Character Action";
-  }) {
-    return () => {
-      const response = sendEvent(event, globalContext.sessionId as UUID);
-      console.log(`${event.type} response`, response);
-      const [error, updatedGameState] = response;
-
-      if (error !== null || updatedGameState === null) {
-        console.error(error.message);
-        throw new Error(`${event.type} failed`);
-      }
-
-      sessionStorage.setItem("coupGameState", JSON.stringify(updatedGameState));
-
-      setGlobalContext((prevState) => ({
-        ...prevState,
-        ...updatedGameState.context,
-      }));
-    };
-  }
-
-  const handleClickCoup = createSendEventClickHandler({ type: "Coup" });
-
-  const handleClickCharacterEvent = createSendEventClickHandler({
-    type: "Character Action",
-  });
-
-  return (
-    <div
-      style={{
-        display: "inline-block",
-        marginRight: "1rem",
-        marginLeft: "1rem",
-        width: "125px",
-        height: "200px",
-        border: "solid 1px black",
-      }}
-    >
-      <p
-        style={{
-          marginLeft: "auto",
-          marginRight: "auto",
-          width: "fit-content",
-        }}
-      >
-        Name: {name}
-      </p>
-      <p
-        style={{
-          marginLeft: "auto",
-          marginRight: "auto",
-          width: "fit-content",
-        }}
-      >
-        Coins: {coins}
-      </p>
-      <div className="action-section">
-        <h3
-          style={{
-            marginLeft: "auto",
-            marginRight: "auto",
-            width: "fit-content",
-          }}
-        >
-          Actions
-        </h3>
-        <div style={{ width: "fit-content" }} className="action-buttons">
-          <button
-            onClick={handleClickCoup}
-            disabled={disabled}
-            style={{ width: "100%" }}
-          >
-            Coup
-          </button>
-          <button
-            onClick={handleClickCharacterEvent}
-            disabled={disabled}
-            style={{ width: "100%", marginTop: "10px" }}
-          >
-            Character Action
-          </button>
-          <button
-            onClick={handleClickCharacterEvent}
-            disabled={disabled}
-            style={{ width: "100%", marginTop: "10px" }}
-          >
-            Character Action
-          </button>
-          <PlayerActionButton
-            onClick={() => {}}
-            disabled={true}
-            style={{}}
-            title="Income"
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export interface PlayerActionButtonProps {
-  onClick: () => void;
-  disabled: boolean;
-  style: React.CSSProperties;
-  title: string;
-}
-
-export function PlayerActionButton(props: PlayerActionButtonProps) {
-  const { onClick, disabled, style, title } = props;
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{ width: "100%", marginTop: "10px", ...style }}
-    >
-      {title}
-    </button>
-  );
-}

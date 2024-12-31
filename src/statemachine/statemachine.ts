@@ -1,11 +1,17 @@
 import { assign, createActor, setup, TransitionSnapshot } from "xstate";
 import { defaultContext } from "../context";
+import { GameMaster, CoupCharacterActionNames } from "../GameMaster";
+import { CoupPlayerEvent } from "../components";
+
+const gm = new GameMaster();
+gm.shuffle();
+console.log("*** deck ***", gm.cardDeck);
 
 export function createUUID() {
   return self.crypto.randomUUID();
 }
 
-export function resetDatabase(): void {
+export function resetDatabase() {
   sessionStorage.removeItem("database");
 }
 
@@ -83,7 +89,7 @@ function generateStateMachine(context?: CoupGameContext) {
   const machine = setup({
     types: {
       context: {} as CoupGameContext,
-      events: {} as { type: "Coup" } | { type: "Character Action" },
+      events: {} as CoupPlayerEvent,
     },
     actions: {
       updateCurrentPlayer: assign({
@@ -222,7 +228,7 @@ export function startGame(
 }
 
 export function sendEvent(
-  event: { type: "Coup" } | { type: "Character Action" },
+  event: CoupPlayerEvent,
   sessionId: UUID
 ): Result<TransitionSnapshot<CoupGameContext>> {
   try {
