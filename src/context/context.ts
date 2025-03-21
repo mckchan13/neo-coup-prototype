@@ -1,6 +1,11 @@
 import { createContext } from "react";
 import { CoupGameContext } from "../statemachine";
 import { SetStateFunction } from "../App";
+import { GameMaster } from "../GameMaster";
+
+const gm = new GameMaster()
+gm.shuffle()
+const deck = gm.cardDeck
 
 export const defaultContext: CoupGameContext = {
   sessionId: "",
@@ -10,6 +15,8 @@ export const defaultContext: CoupGameContext = {
   currentPlayer: -1,
   currentRound: -1,
   numberOfPlayers: 0,
+  playStack: [],
+  deck
 } as const;
 
 export interface IGlobalContext {

@@ -1,12 +1,9 @@
 import { useContext } from "react";
 import { GlobalContext } from "../context";
-import { sendEvent } from "../statemachine";
+import { sendEvent, UUID } from "../statemachine";
 import PlayerActionButton from "./PlayerActionButton";
-import { UUID } from "../statemachine";
-import {
-  CoupCharacterActionNames,
-  coupCharacterCardNamesList,
-} from "../GameMaster";
+import { CoupCharacterActionNames, characterCardNames } from "../types";
+
 
 export type CoupPlayerEvent<
   T =
@@ -55,7 +52,7 @@ export default function PlayerCard(props: {
 
   const handleClickCoup = createSendEventClickHandler({ type: "Coup" });
 
-  const CharacterActionButtons = coupCharacterCardNamesList.map((name) => {
+  const CharacterActionButtons = characterCardNames.map((name) => {
     const handleClickCharacterEvent = createSendEventClickHandler({
       type: "Character Action",
       name,

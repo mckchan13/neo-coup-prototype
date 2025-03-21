@@ -1,11 +1,12 @@
 import { assign, createActor, setup, TransitionSnapshot } from "xstate";
 import { defaultContext } from "../context";
-import { GameMaster, CoupCharacterActionNames } from "../GameMaster";
+// import { GameMaster } from "../GameMaster";
 import { CoupPlayerEvent } from "../components";
+import { Card, TPlayAction, Player } from "../types";
 
-const gm = new GameMaster();
-gm.shuffle();
-console.log("*** deck ***", gm.cardDeck);
+// const gm = new GameMaster();
+// gm.shuffle();
+// console.log("*** deck ***", gm.cardDeck);
 
 export function createUUID() {
   return self.crypto.randomUUID();
@@ -31,38 +32,11 @@ export type CoupGameContext = {
   currentRound: number;
   currentPlayer: number;
   numberOfPlayers: number;
-  players: any[];
+  players: Player[];
   initialized: boolean;
   started: boolean;
-};
-
-export type CoupPlayers = {
-  id: number;
-  coins: number;
-  name: string;
-  deck: any[];
-  actionsEnabled: {
-    generalActions: {
-      income: boolean;
-      foreignAid: boolean;
-      coup: boolean;
-    };
-    characterActions: {
-      duke: boolean;
-      assassin: boolean;
-      captain: boolean;
-      ambassador: boolean;
-    };
-    counterActions: {
-      duke: boolean;
-      contessa: boolean;
-      ambassador: boolean;
-      captain: boolean;
-    };
-    special: {
-      challenge: boolean;
-    };
-  };
+  deck: Card[];
+  playStack: TPlayAction[];
 };
 
 function generateStateMachine(context?: CoupGameContext) {

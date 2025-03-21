@@ -1,48 +1,40 @@
-export const coupCharacterCardNamesList = [
-  "Duke",
-  "Assassin",
-  "Captain",
-  "Contessa",
-  "Ambassador",
-] as const;
+import { Card } from "../types";
+import { CoupCharacterActionNames } from "../types";
+import { characterCardNames } from "../types";
 
-export type CoupCharacterActionNames = (typeof coupCharacterCardNamesList)[number];
-
-export type CoupGameCard<T = CoupCharacterActionNames> = {
-  name: T;
-  cost: number;
-};
 
 export class GameMaster {
-  public coupCardNames = coupCharacterCardNamesList;
-  public deck: CoupGameCard[];
+  public coupCardNames = characterCardNames;
+  public deck: Card[];
 
-  constructor(public existingDeck?: CoupGameCard[]) {
+  constructor(public existingDeck?: Card[]) {
     this.deck = this.buildDeck(this.existingDeck);
   }
 
-  buildDeck(existingDeck?: CoupGameCard[]): CoupGameCard[] {
+  buildDeck(existingDeck?: Card[]): Card[] {
     if (existingDeck !== undefined) return existingDeck;
 
     return this.coupCardNames.flatMap((name) => {
       const card = {
         name: name as CoupCharacterActionNames,
         cost: 0,
-      } satisfies CoupGameCard<CoupCharacterActionNames>;
+        heldBy: "Deck",
+        isRevealed: false,
+      } satisfies Card<CoupCharacterActionNames>;
       return [card, structuredClone(card), structuredClone(card)];
     });
   }
 
-  insert(card: CoupGameCard) {
+  insert(card: Card) {
     this.deck.push(card);
   }
 
-  deal(): CoupGameCard {
+  deal(): Card {
     if (this.deck.length === 0) {
       throw new Error("no card available");
     }
 
-    return this.deck.pop() as CoupGameCard;
+    return this.deck.pop() as Card;
   }
 
   shuffle(): void {
@@ -56,7 +48,7 @@ export class GameMaster {
     }
   }
 
-  get cardDeck(): CoupGameCard[] {
+  get cardDeck(): Card[] {
     return this.deck;
   }
 }
