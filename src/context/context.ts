@@ -1,6 +1,6 @@
 import { createContext } from "react";
-import { CoupGameContext } from "../statemachine";
-import { SetStateFunction } from "../App";
+import type { CoupGameContext } from "../statemachine";
+import type { SetStateFunction } from "../App";
 import { GameMaster } from "../GameMaster";
 
 const gm = new GameMaster()

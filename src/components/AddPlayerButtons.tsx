@@ -1,7 +1,7 @@
 import { useContext } from "react";
 import { startGame } from "../statemachine";
 import { GlobalContext } from "../context";
-import { createPlayer, Player } from "../types";
+import { createPlayer, type Player } from "../types";
 import { GameMaster } from "../GameMaster/GameMaster.ts";
 
 export default function AddPlayerButtons() {
@@ -63,7 +63,7 @@ export default function AddPlayerButtons() {
 
         return (
           <button
-            key={index}
+            key={Math.random()}
             onClick={createAddPlayerClickHandler(index + 2)}
             {...buttonProps}
           >

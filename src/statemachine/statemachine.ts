@@ -1,8 +1,8 @@
-import { assign, createActor, setup, TransitionSnapshot } from "xstate";
+import { assign, createActor, setup, type TransitionSnapshot } from "xstate";
 import { defaultContext } from "../context";
 // import { GameMaster } from "../GameMaster";
-import { CoupPlayerEvent } from "../components";
-import { Card, TPlayAction, Player } from "../types";
+import type { CoupPlayerEvent } from "../components";
+import type { Card, TPlayAction, Player } from "../types";
 
 // const gm = new GameMaster();
 // gm.shuffle();

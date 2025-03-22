@@ -1,7 +1,10 @@
-import { Card } from "../types";
-import { CoupCharacterActionNames } from "../types";
+import type { Card } from "../types";
+import type { CoupCharacterActionNames } from "../types";
 import { characterCardNames } from "../types";
 
+const FOO = "FOO"
+
+console.log(FOO)
 
 export class GameMaster {
   public coupCardNames = characterCardNames;
@@ -40,7 +43,7 @@ export class GameMaster {
   shuffle(): void {
     for (const idx in this.deck) {
       const randomInt = Math.floor(Math.random() * this.deck.length);
-      if (randomInt !== parseInt(idx)) {
+      if (randomInt !== Number.parseInt(idx)) {
         const cardToSwap = this.deck[idx];
         this.deck[idx] = this.deck[randomInt];
         this.deck[randomInt] = cardToSwap;

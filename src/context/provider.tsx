@@ -1,7 +1,7 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useState, useEffect } from "react";
 import { GlobalContext, defaultContext } from "./context.ts";
-import { CoupGameContext } from "../statemachine/statemachine.ts";
+import type { CoupGameContext } from "../statemachine/statemachine.ts";
 
 interface GlobalProviderProps {
   children: ReactNode;

@@ -4,10 +4,10 @@ import "./index.css";
 import App from "./App.tsx";
 import { GlobalProvider } from "./context/provider.tsx";
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <GlobalProvider>
-      <App />
-    </GlobalProvider>
-  </StrictMode>
+createRoot(document.getElementById("root") as HTMLElement).render(
+	<StrictMode>
+		<GlobalProvider>
+			<App />
+		</GlobalProvider>
+	</StrictMode>,
 );

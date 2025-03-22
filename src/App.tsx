@@ -1,4 +1,5 @@
-import React, { useContext } from "react";
+import type React from "react";
+import { useContext } from "react";
 import "./App.css";
 import { createSession, resetDatabase } from "./statemachine/index.ts";
 import { defaultContext, GlobalContext } from "./context";
@@ -15,6 +16,7 @@ function App() {
       <div className="session-title">{globalContext.sessionId}</div>
       <div className="app-container">
         <button
+          type="button"
           disabled={globalContext.sessionId !== ""}
           className="start-button"
           onClick={() => {
@@ -29,6 +31,7 @@ function App() {
           Start Game
         </button>
         <button
+          type="button"
           disabled={globalContext.sessionId === ""}
           className="reset-button"
           onClick={() => {
@@ -90,7 +93,7 @@ function App() {
                   disabled={globalContext.currentPlayer !== i}
                   playerId={i}
                   {...player}
-                ></PlayerCard>
+                />
               );
             })}
           </div>
