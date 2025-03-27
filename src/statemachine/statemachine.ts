@@ -1,50 +1,15 @@
 import { assign, createActor, setup, type TransitionSnapshot } from "xstate";
 import { defaultContext } from "../context";
-// import { GameMaster } from "../GameMaster";
 import type { CoupPlayerEvent } from "../components";
 import type { Card, TPlayAction, Player } from "../types";
+import type { Result, UUID } from "../utils";
 
-// const gm = new GameMaster();
-// gm.shuffle();
-// console.log("*** deck ***", gm.cardDeck);
-
-export function createUUID() {
-  return self.crypto.randomUUID();
-}
-
-export function resetDatabase() {
-  sessionStorage.removeItem("database");
-}
-
-export type UUID = ReturnType<typeof createUUID>;
-
-export type SessionDatabaseItem = {
-  initialContext: CoupGameContext;
-  persistedState?: TransitionSnapshot<CoupGameContext>;
-};
-
-export type SessionDatabase = Record<UUID, SessionDatabaseItem>;
-
-export type Result<T = unknown> = [Error, null] | [null, T];
-
-export type CoupGameContext = {
-  sessionId: string;
-  currentRound: number;
-  currentPlayer: number;
-  numberOfPlayers: number;
-  players: Player[];
-  initialized: boolean;
-  started: boolean;
-  deck: Card[];
-  playStack: TPlayAction[];
-};
-
-function generateStateMachine(context?: CoupGameContext) {
-  if (context === undefined) {
+function generateStateMachine(coupGameContext?: CoupGameContext) {
+  if (coupGameContext === undefined) {
     throw new Error("No context provided");
   }
 
-  const contextFields: (keyof typeof context)[] = [
+  const contextFields: (keyof typeof coupGameContext)[] = [
     "sessionId",
     "numberOfPlayers",
     "players",
@@ -53,7 +18,7 @@ function generateStateMachine(context?: CoupGameContext) {
   ];
 
   const isValidContext = contextFields.every(
-    (key) => context[key] !== undefined || context[key] !== null
+    (key) => coupGameContext[key] !== undefined || coupGameContext[key] !== null
   );
 
   if (!isValidContext) {
@@ -77,7 +42,7 @@ function generateStateMachine(context?: CoupGameContext) {
   }).createMachine({
     /** @xstate-layout N4IgpgJg5mDOIC5QGED2BXADgOgOIEMBbMAAgGUAXfAJwoGIBtABgF1FRNVYBLC71AHbsQAD0QBOJuOwBGGeIAcAZgBsAJiZMArAHYlAFgA0IAJ6I1Khdk02mOhTLUz9ugL6vjaLNgBKGARDkVLSMrMKcPHyCwmIIktJyiqoa2npGpogO2Fq2+kwKOTr6au6eGDgACtSohJgUJBUANvgmYNQkAGao7QCCAMZRAnTIABY0+ANtJP2DzGxIIBG8-EILsWo60irbOtpa+pv74irGZggp2Do5mgqpiToypSBeldW19U0tU129AyvD5Tm4S4y2ia3Mm2w2xUuy0+0O+mOp0QSg01hsjiYanEMhUWhKHme5Wwo3Gk1+gwazVaEFC8w4IMGMUQMLUl2u+NR4i0OK0yPOWOwamuTCUUiUOJUSieL18-kCAFEApA6cDIitmXEpLJ5Mp1JpdAZ+RppCKsTopVoxUotO5CQJUBA4MIXmrQatQLEALQnDIIH0y4kEYhBGgUN1M8EIHSQpjqK0KcTWxFqY0w9E2XT6bMyBSB7x+dABUO0CMaqMyGzYVT6dQHLQqJguHT83M6bCI8SKBQaOHiNTSwmyqo1OpUr7tH7TP5ghnq2eiRDFfkKKwKK43OEWRQw-M4UnUCYUKYzFbjmllhexFwqWRitQuCWdge+s4aGRCkW3XT3PdyouKsqECXh6i7RlK2BdvoCh5KuORSi2foaFYZoxhYeiqHmdpAA */
     context: {
-      ...context,
+      ...coupGameContext,
     },
     id: "Coup",
     initial: "Game Start",
@@ -204,7 +169,7 @@ export function startGame(
 export function sendEvent(
   event: CoupPlayerEvent,
   sessionId: UUID
-): Result<TransitionSnapshot<CoupGameContext>> {
+): Result<TransitionSnapshot<CoupGameContext>, Error> {
   try {
     const dbSessionStorage = sessionStorage.getItem("database");
 
@@ -269,3 +234,22 @@ export function sendEvent(
     return [new Error("Exception Occurred"), null];
   }
 }
+
+export type SessionDatabase = Record<UUID, SessionDatabaseItem>;
+
+export type SessionDatabaseItem = {
+  initialContext: CoupGameContext;
+  persistedState?: TransitionSnapshot<CoupGameContext>;
+};
+
+export type CoupGameContext = {
+  sessionId: string;
+  currentRound: number;
+  currentPlayer: number;
+  numberOfPlayers: number;
+  players: Player[];
+  initialized: boolean;
+  started: boolean;
+  deck: Card[];
+  playStack: TPlayAction[];
+};

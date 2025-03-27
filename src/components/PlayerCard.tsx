@@ -1,151 +1,168 @@
 import { useContext } from "react";
 import { GlobalContext } from "../context";
-import { sendEvent, type UUID } from "../statemachine";
+import { sendEvent } from "../statemachine";
+import type { UUID } from "../utils";
 import PlayerActionButton from "./PlayerActionButton";
 import { type CoupCharacterActionNames, characterCardNames } from "../types";
+import { MockNetwork } from "../MockServer";
 
 export type CoupPlayerEvent<
-	T =
-		| "Coup"
-		| "Character Action"
-		| "Income"
-		| "Foreign Aid"
-		| "Challenge"
-		| "Not Challenge",
+  T =
+    | "Coup"
+    | "Character Action"
+    | "Income"
+    | "Foreign Aid"
+    | "Challenge"
+    | "Not Challenge"
 > = {
-	type: T;
-	name?: T extends "Character Action" ? CoupCharacterActionNames : undefined;
-	target?: number;
+  type: T;
+  name?: T extends "Character Action" ? CoupCharacterActionNames : undefined;
+  target?: number;
 };
 
 export default function PlayerCard(props: {
-	name: string;
-	coins: number;
-	disabled: boolean;
-	playerId: number;
+  name: string;
+  coins: number;
+  disabled: boolean;
+  playerId: number;
 }): JSX.Element {
-	const { globalContext, setGlobalContext } = useContext(GlobalContext);
-	const { name, coins, playerId } = props;
+  const { globalContext, setGlobalContext } = useContext(GlobalContext);
+  const { name, coins, playerId } = props;
 
-	const disabled = globalContext.currentPlayer !== playerId;
+  const disabled = globalContext.currentPlayer !== playerId;
 
-	function createSendEventClickHandler(event: CoupPlayerEvent) {
-		return () => {
-			const response = sendEvent(event, globalContext.sessionId as UUID);
-			console.log(`${event.type} response`, response);
-			const [error, updatedGameState] = response;
+  function createSendEventClickHandler(event: CoupPlayerEvent) {
+    return () => {
+      const response = sendEvent(event, globalContext.sessionId as UUID);
+      console.log(`${event.type} response`, response);
+      const [error, updatedGameState] = response;
 
-			if (error !== null || updatedGameState === null) {
-				console.error(error.message);
-				throw new Error(`${event.type} failed`);
-			}
+      if (error !== null || updatedGameState === null) {
+        console.error(error.message);
+        throw new Error(`${event.type} failed`);
+      }
 
-			sessionStorage.setItem("coupGameState", JSON.stringify(updatedGameState));
+      MockNetwork.sendRequest("initializeGame", {
+        sessionId: self.crypto.randomUUID(),
+        playerNames: []
+      })
 
-			setGlobalContext((prevState) => ({
-				...prevState,
-				...updatedGameState.context,
-			}));
-		};
-	}
+      // document.body.dispatchEvent(
+      //   new CustomEvent("mockHttpRequest", {
+      //     bubbles: true,
+      //     detail: {
+      //       message:
+      //         "This is the mockServerRequestEvent, issued by the send event click handler",
+      //     },
+      //   })
+      // );
 
-	const handleClickCoup = createSendEventClickHandler({ type: "Coup" });
+      sessionStorage.setItem("coupGameState", JSON.stringify(updatedGameState));
 
-	const CharacterActionButtons = characterCardNames.map((name) => {
-		const handleClickCharacterEvent = createSendEventClickHandler({
-			type: "Character Action",
-			name,
-		} satisfies CoupPlayerEvent<"Character Action">);
+      setGlobalContext((prevState) => ({
+        ...prevState,
+        ...updatedGameState.context,
+      }));
+    };
+  }
 
-		return (
-			<PlayerActionButton
-				disabled={disabled}
-				onClick={handleClickCharacterEvent}
-				title={name}
-				key={name}
-			/>
-		);
-	});
+  const handleClickCoup = createSendEventClickHandler({ type: "Coup" });
 
-	return (
-		<div
-			style={{
-				display: "inline-block",
-				marginRight: "1rem",
-				marginLeft: "1rem",
-				width: "125px",
-				height: "max-content",
-				border: "solid 1px black",
-				padding: "0.5rem",
-			}}
-		>
-			<p
-				style={{
-					marginLeft: "auto",
-					marginRight: "auto",
-					width: "fit-content",
-				}}
-			>
-				Name: {name}
-			</p>
-			<p
-				style={{
-					marginLeft: "auto",
-					marginRight: "auto",
-					width: "fit-content",
-				}}
-			>
-				Coins: {coins}
-			</p>
-			<div className="action-section">
-				<h3
-					style={{
-						marginLeft: "auto",
-						marginRight: "auto",
-						width: "fit-content",
-					}}
-				>
-					Actions
-				</h3>
-				<div style={{ width: "fit-content" }} className="action-buttons">
-					<PlayerActionButton
-						onClick={handleClickCoup}
-						disabled={disabled}
-						style={{}}
-						title="Coup"
-						key={"Coup"}
-					/>
-					<PlayerActionButton
-						onClick={createSendEventClickHandler({ type: "Income" })}
-						disabled={disabled}
-						style={{}}
-						title="Income"
-						key={"Income"}
-					/>
-					<PlayerActionButton
-						onClick={createSendEventClickHandler({ type: "Foreign Aid" })}
-						disabled={disabled}
-						style={{}}
-						title="Foreign Aid"
-						key={"Foreign Aid"}
-					/>
-					{CharacterActionButtons}
-					<PlayerActionButton
-						onClick={createSendEventClickHandler({ type: "Challenge" })}
-						disabled={disabled}
-						style={{}}
-						title="Challenge"
-						key={"Challenge"}
-					/>
-					<PlayerActionButton
-						onClick={createSendEventClickHandler({ type: "Not Challenge" })}
-						disabled={disabled}
-						style={{}}
-						title="Challenge"
-						key={"Challenge"}
-					/>
-				</div>
-			</div>
-		</div>
-	);
+  const CharacterActionButtons = characterCardNames.map((name) => {
+    const handleClickCharacterEvent = createSendEventClickHandler({
+      type: "Character Action",
+      name,
+    } satisfies CoupPlayerEvent<"Character Action">);
+
+    return (
+      <PlayerActionButton
+        disabled={disabled}
+        onClick={handleClickCharacterEvent}
+        title={name}
+        key={name}
+      />
+    );
+  });
+
+  return (
+    <div
+      style={{
+        display: "inline-block",
+        marginRight: "1rem",
+        marginLeft: "1rem",
+        width: "125px",
+        height: "max-content",
+        border: "solid 1px black",
+        padding: "0.5rem",
+      }}
+    >
+      <p
+        style={{
+          marginLeft: "auto",
+          marginRight: "auto",
+          width: "fit-content",
+        }}
+      >
+        Name: {name}
+      </p>
+      <p
+        style={{
+          marginLeft: "auto",
+          marginRight: "auto",
+          width: "fit-content",
+        }}
+      >
+        Coins: {coins}
+      </p>
+      <div className="action-section">
+        <h3
+          style={{
+            marginLeft: "auto",
+            marginRight: "auto",
+            width: "fit-content",
+          }}
+        >
+          Actions
+        </h3>
+        <div style={{ width: "fit-content" }} className="action-buttons">
+          <PlayerActionButton
+            onClick={handleClickCoup}
+            disabled={disabled}
+            style={{}}
+            title="Coup"
+            key={"Coup"}
+          />
+          <PlayerActionButton
+            onClick={createSendEventClickHandler({ type: "Income" })}
+            disabled={disabled}
+            style={{}}
+            title="Income"
+            key={"Income"}
+          />
+          <PlayerActionButton
+            onClick={createSendEventClickHandler({ type: "Foreign Aid" })}
+            disabled={disabled}
+            style={{}}
+            title="Foreign Aid"
+            key={"Foreign Aid"}
+          />
+          {CharacterActionButtons}
+          <PlayerActionButton
+            onClick={createSendEventClickHandler({ type: "Challenge" })}
+            disabled={disabled}
+            style={{}}
+            title="Challenge"
+            key={"Challenge"}
+          />
+          <PlayerActionButton
+            onClick={createSendEventClickHandler({ type: "Not Challenge" })}
+            disabled={disabled}
+            style={{}}
+            title="No Challenge"
+            key={"No Challenge"}
+          />
+        </div>
+      </div>
+    </div>
+  );
 }

@@ -1,7 +1,8 @@
 import type React from "react";
 import { useContext } from "react";
 import "./App.css";
-import { createSession, resetDatabase } from "./statemachine/index.ts";
+import { createSession } from "./statemachine/index.ts";
+import { resetDatabase } from "./utils/helpers.ts";
 import { defaultContext, GlobalContext } from "./context";
 import PlayerCard from "./components/PlayerCard.tsx";
 import AddPlayerButtons from "./components/AddPlayerButtons.tsx";
