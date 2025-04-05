@@ -1,3 +1,30 @@
+export function parseError(error: unknown) {
+  try {
+    const stringifiedError = JSON.stringify(error);
+    if (error instanceof Error) {
+      return {
+        message: error.message,
+      };
+    } else if (stringifiedError === "{}") {
+      return {
+        message: (error as Error).toString(),
+      };
+    } else if (!stringifiedError.startsWith("{")) {
+      return {
+        message: error,
+      };
+    } else {
+      return {
+        message: error,
+      };
+    }
+  } catch (error) {
+    return {
+      error,
+    }
+  }
+}
+
 export function createUUID() {
   return self.crypto.randomUUID();
 }

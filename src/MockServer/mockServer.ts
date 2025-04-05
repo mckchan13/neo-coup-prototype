@@ -1,4 +1,10 @@
-import type { GameEvent, GameContext } from "../statemachine/statemachine2";
+import { createActor, Snapshot, TransitionSnapshot } from "xstate";
+import {
+  type GameEvent,
+  type GameContext,
+  startStateMachine,
+} from "../statemachine/statemachine2";
+import { parseError } from "../utils";
 
 export class MockHttpRequest<T extends string = "mockHttpRequest"> {
   constructor(public type: T, public detail: Record<any, any>) {
@@ -27,16 +33,11 @@ export class MockNetwork {
     }).dispatch();
   }
 
-  static listen(eventType: string,
-    eventListener: (event: Event) => void
-  ) {
+  static listen(eventType: string, eventListener: (event: Event) => void) {
     document.body.addEventListener(eventType, eventListener);
 
     const cleanUpFunction = () => {
-      document.body.removeEventListener(
-        eventType,
-        eventListener
-      );
+      document.body.removeEventListener(eventType, eventListener);
     };
 
     return {
@@ -111,11 +112,44 @@ const mockServerRoutes: TServerRoutes = {
 
     assertRequestIsValid(request);
 
-    console.log(request);
+    const { sessionId, gameContext } = createGameSessionAndContext();
+
+    // save the initial game context to the database, where sessionId is
+    // the key to the new gamecontext
+    setGameContextBySessionId("coupDatabase", sessionId, {
+      initialGameContext: gameContext,
+      currentGameContext: gameContext,
+    });
+
+    // initialize the Game state machine and return updated state to user
+    const machine = startStateMachine(gameContext);
+
+    const actor = createActor(machine);
+
+    const subscription = actor.subscribe({
+      next: (snapshot) => console.log(snapshot),
+      error: (err) => console.error(parseError(err)),
+    });
+
+    actor.start();
+
+    const snapshot =
+      actor.getPersistedSnapshot() as TransitionSnapshot<GameContext>;
+
+    const currentGameContext = snapshot.context;
+
+    setGameContextAndSnapshotBySessionId("coupDatabase", sessionId, {
+      currentGameContext,
+      snapshot,
+    });
+
+    subscription.unsubscribe();
+
+    actor.stop();
 
     return {
-      sessionId: self.crypto.randomUUID(),
-      gameContext: createGameContext(""),
+      sessionId,
+      gameContext: currentGameContext,
     };
   },
 
@@ -123,25 +157,33 @@ const mockServerRoutes: TServerRoutes = {
     // send the event to the state machine
     const { sessionId, event } = request;
     console.log(sessionId, event);
+
+    const { updatedGameContext } = transitionStateMachineWithEvent(
+      event,
+      sessionId
+    );
+    
     return {
-      ...createGameSessionAndContext(),
+      sessionId,
+      gameContext: updatedGameContext,
     };
   },
 };
 
-export function createGameContext(
-  sessionId: string,
+export function createNewGameContext(
+  sessionId?: string,
   overrides?: Partial<GameContext>
 ): GameContext {
   const defaultGameContext: GameContext = {
     players: [],
     started: false,
     playStack: [],
-    sessionId,
+    sessionId: sessionId || createSessionId(),
     intialized: true,
     currentRound: -1,
     currentAction: "",
     currentPlayer: 0,
+    numberOfPlayers: 0,
   };
 
   return {
@@ -153,39 +195,115 @@ export function createGameContext(
 function createGameSessionAndContext() {
   const sessionId = createSessionId();
 
-  const initialGameContext = createGameContext(sessionId);
+  const initialGameContext = createNewGameContext(sessionId);
 
-  setGameContextBySessionId("coupDatabase", sessionId, initialGameContext);
+  // setGameContextBySessionId("coupDatabase", sessionId, initialGameContext);
 
   return { sessionId, gameContext: initialGameContext };
 }
 
-function getDatabase(
-  databaseName: string
-): Record<SessionId, { gameContext: GameContext }> {
+function getDatabase(databaseName: string): CoupDatabase {
   const database = JSON.parse(
     sessionStorage.getItem(databaseName) || "{}"
-  ) as Record<SessionId, { gameContext: GameContext }>;
+  ) as CoupDatabase;
 
   return database;
 }
 
-function getGameContextBySessionId(
+function getGameContextAndSnapshotBySessionId(
   databaseName: string,
   sessionId: SessionId
-): GameContext {
+): {
+  initialGameContext: GameContext | undefined;
+  currentGameContext: GameContext | undefined;
+  snapshot: TransitionSnapshot<GameContext> | undefined;
+} {
   const database = getDatabase(databaseName);
-  return database[sessionId]?.gameContext;
+  const { initialGameContext, currentGameContext, snapshot } =
+    database[sessionId];
+
+  return {
+    initialGameContext,
+    currentGameContext,
+    snapshot,
+  };
 }
 
 function setGameContextBySessionId(
   databaseName: string,
   sessionId: SessionId,
-  gameContext: GameContext
+  updatedCoupDatabaseItem: CoupDatabaseItem
 ): void {
   const database = getDatabase(databaseName);
-  database[sessionId] = { gameContext: gameContext };
+  if (sessionId in database) {
+    const prevCoupDatabaseItem = database[sessionId];
+    database[sessionId] = {
+      ...prevCoupDatabaseItem,
+      ...updatedCoupDatabaseItem,
+    };
+  } else {
+    database[sessionId] = updatedCoupDatabaseItem;
+  }
+
   sessionStorage.setItem(databaseName, JSON.stringify(database));
+}
+
+function setGameContextAndSnapshotBySessionId(
+  databaseName: string,
+  sessionId: SessionId,
+  updatedGameContextAndSnapshot: Omit<CoupDatabaseItem, "initialGameContext">
+): void {
+  const database = getDatabase(databaseName);
+  const { currentGameContext, snapshot } = updatedGameContextAndSnapshot;
+  const prevCoupDatabaseItem = database[sessionId];
+  database[sessionId] = {
+    ...prevCoupDatabaseItem,
+    currentGameContext,
+    snapshot,
+  };
+
+  sessionStorage.setItem(databaseName, JSON.stringify(database));
+}
+
+function transitionStateMachineWithEvent(
+  event: GameEvent,
+  sessionId: SessionId
+): {
+  updatedGameContext: GameContext;
+} {
+  const { initialGameContext, snapshot } = getGameContextAndSnapshotBySessionId(
+    "coupDatabase",
+    sessionId
+  );
+
+  const machine = startStateMachine(initialGameContext);
+
+  const actor = createActor(machine, { snapshot });
+
+  const subscription = actor.subscribe({
+    next: (snapshot) => console.log(snapshot),
+    error: (err) => console.error(parseError(err)),
+  });
+
+  actor.start();
+
+  actor.send(event);
+
+  const updatedSnapshot =
+    actor.getPersistedSnapshot() as TransitionSnapshot<GameContext>;
+
+  subscription.unsubscribe();
+
+  const updatedGameContext = updatedSnapshot.context;
+
+  setGameContextAndSnapshotBySessionId("coupDatabase", sessionId, {
+    currentGameContext: updatedGameContext,
+    snapshot,
+  });
+
+  return {
+    updatedGameContext,
+  };
 }
 
 function createSessionId() {
@@ -193,6 +311,7 @@ function createSessionId() {
 }
 
 export type SessionId = ReturnType<typeof createSessionId>;
+
 export type AssertionFunction<T> = (value: T) => asserts value is T;
 
 function assertsTypeOfValue<T>(
@@ -207,3 +326,11 @@ assertsTypeOfValue<string>("someString", (value) => {
     throw new Error("Not a string");
   }
 });
+
+export type CoupDatabaseItem = {
+  initialGameContext: GameContext;
+  currentGameContext?: GameContext;
+  snapshot?: TransitionSnapshot<GameContext>;
+};
+
+export type CoupDatabase = Record<SessionId, CoupDatabaseItem>;
