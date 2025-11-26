@@ -22,7 +22,9 @@
       "recommended": true,
       "style": {
         "useImportType": "warn",
-        "noUnusedTemplateLiteral": "info"
+        "noUnusedTemplateLiteral": "info",
+        "noParameterAssign": "off",
+        "noUselessElse": "off"
       },
       "a11y": {
         "useButtonType": "warn"
@@ -33,7 +35,8 @@
         "noStaticOnlyClass": "off"
       },
       "suspicious": {
-        "noExplicitAny": "warn"
+        "noExplicitAny": "warn",
+        "noAssignInExpressions": "off"
       }
     }
   },

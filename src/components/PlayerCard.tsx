@@ -5,6 +5,7 @@ import type { UUID } from "../utils";
 import PlayerActionButton from "./PlayerActionButton";
 import { type CoupCharacterActionNames, characterCardNames } from "../types";
 import { MockNetwork } from "../MockServer";
+import type { GameEvent } from "../statemachine/statemachine2";
 
 export type CoupPlayerEvent<
   T =
@@ -31,7 +32,7 @@ export default function PlayerCard(props: {
 
   const disabled = globalContext.currentPlayer !== playerId;
 
-  function createSendEventClickHandler(event: CoupPlayerEvent) {
+  function createSendEventClickHandler(event: CoupPlayerEvent, gameEvent?: GameEvent) {
     return () => {
       const response = sendEvent(event, globalContext.sessionId as UUID);
       console.log(`${event.type} response`, response);
@@ -42,10 +43,10 @@ export default function PlayerCard(props: {
         throw new Error(`${event.type} failed`);
       }
 
-      MockNetwork.sendRequest("initializeGame", {
+      MockNetwork.sendRequest("processEvent", {
         sessionId: self.crypto.randomUUID(),
-        playerNames: []
-      })
+        playerNames: [],
+      });
 
       // document.body.dispatchEvent(
       //   new CustomEvent("mockHttpRequest", {

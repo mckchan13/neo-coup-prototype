@@ -1,4 +1,4 @@
-import { createActor, Snapshot, TransitionSnapshot } from "xstate";
+import { createActor, type TransitionSnapshot } from "xstate";
 import {
   type GameEvent,
   type GameContext,
@@ -6,14 +6,23 @@ import {
 } from "../statemachine/statemachine2";
 import { parseError } from "../utils";
 
-export class MockHttpRequest<T extends string = "mockHttpRequest"> {
-  constructor(public type: T, public detail: Record<any, any>) {
+export class MockHttpRequest<T extends MockEvents> {
+  constructor(
+    public type: T,
+    public detail: { route: keyof TServerRoutes; request: any; message: string }
+  ) {
     this.type = type;
     this.detail = detail;
   }
 
-  private buildCustomEvent(): CustomEvent {
-    return new CustomEvent(this.type, this.detail);
+  public buildCustomEvent(): CustomEvent<{
+    route: keyof TServerRoutes;
+    request: Parameters<TServerRoutes[keyof TServerRoutes]>[number];
+  }> {
+    return new CustomEvent<{
+      route: keyof TServerRoutes;
+      request: Parameters<TServerRoutes[keyof TServerRoutes]>[number];
+    }>(this.type, { detail: this.detail });
   }
 
   public dispatch(): void {
@@ -21,64 +30,77 @@ export class MockHttpRequest<T extends string = "mockHttpRequest"> {
   }
 }
 
+export enum MockEvents {
+  MOCK_HTTP_REQUEST = "MOCK_HTTP_REQUEST",
+  MOCK_WEB_SOCKET_MESSAGE = "MOCK_WEB_SOCKET_MESSAGE",
+}
+
 export class MockNetwork {
   static sendRequest(
     route: keyof TServerRoutes,
     request: Parameters<TServerRoutes[keyof TServerRoutes]>[number]
   ) {
-    new MockHttpRequest("mockHttpRequest", {
+    new MockHttpRequest(MockEvents.MOCK_HTTP_REQUEST, {
       route,
       request,
       message: "Hello world!",
     }).dispatch();
   }
 
-  static listen(eventType: string, eventListener: (event: Event) => void) {
-    document.body.addEventListener(eventType, eventListener);
+  static createListener(
+    eventType: string | MockEvents,
+    eventListener: (
+      event: CustomEvent<{
+        route: keyof TServerRoutes;
+        request: Parameters<TServerRoutes[keyof TServerRoutes]>[number];
+        message: string;
+      }>
+    ) => void
+  ) {
+    document.body.addEventListener(eventType, eventListener as EventListener);
 
     const cleanUpFunction = () => {
-      document.body.removeEventListener(eventType, eventListener);
+      document.body.removeEventListener(eventType, eventListener as EventListener);
     };
 
-    return {
-      cleanUpFunction,
-    };
+    return cleanUpFunction;
   }
 }
 
-export function sendRequest(
-  route: keyof TServerRoutes,
-  request: Parameters<TServerRoutes[keyof TServerRoutes]>[number]
-) {
-  new MockHttpRequest("mockHttpRequest", {
-    route,
-    request,
-    message: "Hello world!",
-  }).dispatch();
-}
+// export function sendRequest(
+//   route: keyof TServerRoutes,
+//   request: Parameters<TServerRoutes[keyof TServerRoutes]>[number]
+// ) {
+//   new MockHttpRequest(MockEvents.MOCK_HTTP_REQUEST, {
+//     route,
+//     request,
+//     message: "Hello world!",
+//   }).dispatch();
+// }
 
-export function sendRequestOriginalImplementation(
-  route: keyof TServerRoutes,
-  request: Parameters<TServerRoutes[keyof TServerRoutes]>[number]
-) {
-  // Simulates receiving the event then routing it
-  let response: ReturnType<TServerRoutes[keyof TServerRoutes]>;
+// export function routeEvent(event: MockHttpRequest<MockEvents>) {
+//   const {
+//     detail: { route, request },
+//   } = event;
 
-  switch (route) {
-    case "initializeGame": {
-      const handler = mockServerRoutes.initializeGame;
-      response = handler(request as { playerNames: string[] });
-      break;
-    }
-    case "processEvent": {
-      const handler = mockServerRoutes.processEvent;
-      response = handler(request as { sessionId: SessionId; event: GameEvent });
-      break;
-    }
-  }
+//   // Simulates receiving the event then routing it
+//   let response: ReturnType<TServerRoutes[keyof TServerRoutes]>;
 
-  return response;
-}
+//   switch (route) {
+//     case "initializeGame": {
+//       const handler = mockServerRouteHandlers.initializeGame;
+//       response = handler(request as { playerNames: string[] });
+//       break;
+//     }
+//     case "processEvent": {
+//       const handler = mockServerRouteHandlers.processEvent;
+//       response = handler(request as { sessionId: SessionId; event: GameEvent });
+//       break;
+//     }
+//   }
+
+//   return response;
+// }
 
 export type MockServerRouteHandler<TRequest = any, TResponse = any> = (
   request: TRequest
@@ -95,7 +117,7 @@ export type TServerRoutes = {
   >;
 };
 
-const mockServerRoutes: TServerRoutes = {
+export const mockServerRouteHandlers: TServerRoutes = {
   initializeGame: (request: { playerNames: string[] }) => {
     function assertRequestIsValid(request: {
       playerNames: string[];
@@ -162,13 +184,88 @@ const mockServerRoutes: TServerRoutes = {
       event,
       sessionId
     );
-    
+
     return {
       sessionId,
       gameContext: updatedGameContext,
     };
   },
 };
+
+// export const mockServerRoutes: TServerRoutes = {
+//   initializeGame: (request: { playerNames: string[] }) => {
+//     function assertRequestIsValid(request: {
+//       playerNames: string[];
+//     }): asserts request is { playerNames: string[] } {
+//       const playerNamesIsNotArray = !Array.isArray(request.playerNames);
+//       const arrayValuesAreNotStrings = !!request.playerNames?.some(
+//         (value) => typeof value !== "string"
+//       );
+
+//       if (playerNamesIsNotArray || arrayValuesAreNotStrings) {
+//         throw new Error("Invalid request for initialize game");
+//       }
+//     }
+
+//     assertRequestIsValid(request);
+
+//     const { sessionId, gameContext } = createGameSessionAndContext();
+
+//     // save the initial game context to the database, where sessionId is
+//     // the key to the new gamecontext
+//     setGameContextBySessionId("coupDatabase", sessionId, {
+//       initialGameContext: gameContext,
+//       currentGameContext: gameContext,
+//     });
+
+//     // initialize the Game state machine and return updated state to user
+//     const machine = startStateMachine(gameContext);
+
+//     const actor = createActor(machine);
+
+//     const subscription = actor.subscribe({
+//       next: (snapshot) => console.log(snapshot),
+//       error: (err) => console.error(parseError(err)),
+//     });
+
+//     actor.start();
+
+//     const snapshot =
+//       actor.getPersistedSnapshot() as TransitionSnapshot<GameContext>;
+
+//     const currentGameContext = snapshot.context;
+
+//     setGameContextAndSnapshotBySessionId("coupDatabase", sessionId, {
+//       currentGameContext,
+//       snapshot,
+//     });
+
+//     subscription.unsubscribe();
+
+//     actor.stop();
+
+//     return {
+//       sessionId,
+//       gameContext: currentGameContext,
+//     };
+//   },
+
+//   processEvent: (request: { sessionId: SessionId; event: GameEvent }) => {
+//     // send the event to the state machine
+//     const { sessionId, event } = request;
+//     console.log(sessionId, event);
+
+//     const { updatedGameContext } = transitionStateMachineWithEvent(
+//       event,
+//       sessionId
+//     );
+
+//     return {
+//       sessionId,
+//       gameContext: updatedGameContext,
+//     };
+//   },
+// };
 
 export function createNewGameContext(
   sessionId?: string,

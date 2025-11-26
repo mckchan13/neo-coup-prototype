@@ -2,10 +2,15 @@ import type { ReactNode } from "react";
 import { useState, useEffect } from "react";
 import { GlobalContext, defaultContext } from "./context.ts";
 import type { CoupGameContext } from "../statemachine/statemachine.ts";
-// import { sendRequest } from "../MockServer/mockServer.ts";
-import { MockNetwork } from "../MockServer/mockServer.ts";
+import {
+  MockEvents,
+  MockNetwork,
+  mockServerRouteHandlers,
+  type SessionId,
+} from "../MockServer/mockServer.ts";
+import type { GameEvent } from "../statemachine/statemachine2.ts";
 
-interface GlobalProviderProps {
+export interface GlobalProviderProps {
   children: ReactNode;
 }
 
@@ -21,42 +26,33 @@ export const GlobalProvider = ({
 
   // Listen for a custom event from the mock server
   useEffect(() => {
-    const { cleanUpFunction } = MockNetwork.listenForMockHttpRequest(
-      (event) => {
-        console.log("This is the event: ", event);
-      }
-    );
+    const cleanUpFunctions = [
+      MockNetwork.createListener(MockEvents.MOCK_HTTP_REQUEST, (event) => {
+        const { route, request } = event.detail;
 
-    const mockServerRequestEventListener = (event: Event) => {
-      console.log("The mock server request: ", event);
-    };
+        console.log("!!!!!!", route, request);
 
-    document.body.addEventListener(
-      "mockHttpRequest",
-      mockServerRequestEventListener
-    );
+        if (route === "processEvent") {
+          const { sessionId, event } = request as {
+            sessionId: SessionId;
+            event: GameEvent;
+          };
 
-    const mockWebSocketEventListener = (event: Event) => {
-      console.log("The web socket event: ", event);
-    };
+          const { gameContext } = mockServerRouteHandlers.processEvent({
+            sessionId,
+            event,
+          });
 
-    document.body.addEventListener(
-      "mockWebSocketMessage",
-      mockWebSocketEventListener
-    );
+          setGlobalContext((prev) => ({ ...prev }));
+        } else if (route === "initializeGame") {
+        }
+      }),
+    ];
 
     return () => {
-      cleanUpFunction();
-
-      document.body.removeEventListener(
-        "mockHttpRequest",
-        mockServerRequestEventListener
-      );
-
-      document.body.removeEventListener(
-        "mockWebSocketMessage",
-        mockWebSocketEventListener
-      );
+      for (const cleanUpFunction of cleanUpFunctions) {
+        cleanUpFunction();
+      }
     };
   }, []);
 
